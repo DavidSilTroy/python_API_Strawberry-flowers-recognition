@@ -1,3 +1,24 @@
+#to avoid to upload the whole yolov7
+yolov7/
+cfg/
+data/
+deploy/
+figure/
+fortest/
+inference/
+models/
+paper/
+runs/
+scripts/
+tools/
+utils/
+*.pt
+train.py
+train_aux.py
+test.py
+export.py
+hubconf.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
