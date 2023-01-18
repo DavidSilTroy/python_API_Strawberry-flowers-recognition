@@ -39,7 +39,7 @@ def detect_objects():
     # Get the image data from the POST request
     image_data = request.files['image'].read()
     #object detection
-    img_detected = strw_detect.strw_detect(image=image_data, source='fortest', weights=['rtrain-2.pt'],conf_thres= 0.5, img_size=640,name="fromapi")
+    img_detected, result = strw_detect.strw_detect(image=image_data, source='fortest', weights=['rtrain-2.pt'],conf_thres= 0.5, img_size=640,name="fromapi")
     print(type(img_detected))
     # Encode image in JPEG format
     _, img_encoded = cv2.imencode('.jpg', img_detected)
