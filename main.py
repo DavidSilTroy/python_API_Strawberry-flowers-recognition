@@ -14,6 +14,7 @@ import json
 
 app = Flask("StrawberryFlowersAPI")
 api = Api(app)
+y7_stw = strw_detect.StrwbDetection()
 
 # route http posts to this method
 @app.route('/api/test', methods=['POST'])
@@ -66,6 +67,19 @@ def detect_objects_data():
     }
     # Return the response as JSON
     return jsonify(response)
+
+@app.route('/api/detect', methods=['POST'])
+def detect_objects_data_class():
+    # Get the image data from the POST request
+    image_data = request.files['image'].read()
+    #object detection
+    img_detected, result = y7_stw.detect_strw_flowers(image_data)
+    # Encode image in JPEG format
+    _, img_encoded = cv2.imencode('.jpg', img_detected)
+    # Convert the image to bytes
+    img_bytes = img_encoded.tobytes()
+    # Return the image as response
+    return send_file(io.BytesIO(img_bytes), mimetype='image/jpeg')
     
 
 
