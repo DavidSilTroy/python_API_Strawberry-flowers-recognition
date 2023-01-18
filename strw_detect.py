@@ -52,18 +52,24 @@ class LoadSingleImage:
 
 
 
-def strw_detect(weights=['yolov7.pt'], source='inference/images', image= 0, img_size=640, conf_thres=0.25, iou_thres=0.45, device='', view_img=False, save_txt=False, save_conf=False, nosave=False, classes=None, agnostic_nms=False, augment=False, update=False, project='runs/detect', name='exp', exist_ok=False, no_trace=False):
-    
-    print('****************Running strw_detect \n')
-    save_img = not nosave and not source.endswith('.txt')  # save inference images
+def strw_detect(image):
 
-    # Directories
-    save_dir = Path(increment_path(Path(project) / name, exist_ok=exist_ok))  # increment run
-    (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
+    #data needed for the object-detection
+    img_size=640
+    conf_thres=0.25
+    iou_thres=0.45
+    classes=None
+    agnostic_nms=False
+    augment=False
+    no_trace=False
+    weights=['rtrain-2.pt']
+
+    print('****************Running strw_detect \n')
+
 
     # Initialize
     set_logging()
-    device = select_device(device)
+    device = select_device('')
     half = device.type != 'cpu'  # half precision only supported on CUDA
     # Load model
     model = attempt_load(weights, map_location=device)  # load FP32 model

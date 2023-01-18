@@ -1,4 +1,5 @@
-from flask import Flask, request, Response, send_file
+import base64
+from flask import Flask, request, Response, send_file, jsonify
 from PIL import Image
 import jsonpickle
 import numpy as np
@@ -17,7 +18,6 @@ api = Api(app)
 # route http posts to this method
 @app.route('/api/test', methods=['POST'])
 def test():
-
     print('Checking picture')
     # Get the image data from the POST request
     image_data = request.files['image'].read()
@@ -34,19 +34,38 @@ def test():
     response.headers.set('Content-Type', 'image/jpeg')
     return response
 
-@app.route('/detect-objects', methods=['POST'])
-def detect_objects():
+@app.route('/api/image-strawberry', methods=['POST'])
+def detect_objects_image():
     # Get the image data from the POST request
     image_data = request.files['image'].read()
     #object detection
-    img_detected, result = strw_detect.strw_detect(image=image_data, source='fortest', weights=['rtrain-2.pt'],conf_thres= 0.5, img_size=640,name="fromapi")
-    
+    img_detected, result = strw_detect.strw_detect(image_data)
     # Encode image in JPEG format
     _, img_encoded = cv2.imencode('.jpg', img_detected)
     # Convert the image to bytes
     img_bytes = img_encoded.tobytes()
     # Return the image as response
     return send_file(io.BytesIO(img_bytes), mimetype='image/jpeg')
+
+@app.route('/api/data-strawberry', methods=['POST'])
+def detect_objects_data():
+    # Get the image data from the POST request
+    image_data = request.files['image'].read()
+    #object detection
+    img_detected, result = strw_detect.strw_detect(image_data)
+    # Encode image in JPEG format
+    _, img_encoded = cv2.imencode('.jpg', img_detected)
+    # Convert the image to bytes
+    img_bytes = img_encoded.tobytes()
+    # Convert the image bytes to a base64 encoded string
+    img_base64 = base64.b64encode(img_bytes).decode()
+    # Create a dictionary to hold the image and result
+    response = {
+        'image': img_base64,
+        'result': result
+    }
+    # Return the response as JSON
+    return jsonify(response)
     
 
 
