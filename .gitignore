@@ -6,13 +6,11 @@ deploy/
 figure/
 fortest/
 inference/
-models/
 paper/
 runs/
 scripts/
 tools/
-utils/
-*.pt
+traced_model.pt
 train.py
 train_aux.py
 test.py
