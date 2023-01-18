@@ -1,4 +1,4 @@
-from flask import Flask, request, Response
+from flask import Flask, request, Response, send_file
 from PIL import Image
 import jsonpickle
 import numpy as np
@@ -38,19 +38,16 @@ def test():
 def detect_objects():
     # Get the image data from the POST request
     image_data = request.files['image'].read()
-    # Decode image data as a numpy array
-    image = np.frombuffer(image_data, np.uint8)
-    # Decode image as a color image
-    image = cv2.imdecode(image, cv2.IMREAD_COLOR)
-    # Run the object detector
-    # objects =  
-
-    strw_detect.strw_detect(source='fortest', weights=['rtrain-2.pt'],conf_thres= 0.5, img_size=640,name="fromapi")
-    # Create a response with the object detections
-    # response = app.make_response(json.dumps(objects))
-    # response.headers.set('Content-Type', 'application/json')
-    # return response
-    return 'haciendo xd'
+    #object detection
+    img_detected = strw_detect.strw_detect(image=image_data, source='fortest', weights=['rtrain-2.pt'],conf_thres= 0.5, img_size=640,name="fromapi")
+    print(type(img_detected))
+    # Encode image in JPEG format
+    _, img_encoded = cv2.imencode('.jpg', img_detected)
+    # Convert the image to bytes
+    img_bytes = img_encoded.tobytes()
+    # Return the image as response
+    return send_file(io.BytesIO(img_bytes), mimetype='image/jpeg')
+    
 
 
 if __name__ == '__main__':

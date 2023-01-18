@@ -18,6 +18,7 @@ train_aux.py
 test.py
 export.py
 hubconf.py
+LICENCE.md
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

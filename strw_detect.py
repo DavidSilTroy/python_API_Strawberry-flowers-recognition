@@ -5,16 +5,55 @@ from pathlib import Path
 import cv2
 import torch
 import torch.backends.cudnn as cudnn
-from numpy import random
+import numpy as np
 
 from models.experimental import attempt_load
-from utils.datasets import LoadStreams, LoadImages
+from utils.datasets import LoadStreams, LoadImages, letterbox
 from utils.general import check_img_size, check_requirements, check_imshow, non_max_suppression, apply_classifier, \
     scale_coords, xyxy2xywh, strip_optimizer, set_logging, increment_path
 from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
 
-def strw_detect(weights=['yolov7.pt'], source='inference/images', img_size=640, conf_thres=0.25, iou_thres=0.45, device='', view_img=False, save_txt=False, save_conf=False, nosave=False, classes=None, agnostic_nms=False, augment=False, update=False, project='runs/detect', name='exp', exist_ok=False, no_trace=False):
+
+#### This a modification based on the 'LoadImages' from 'utils.datasets'
+class LoadSingleImage:
+
+    def __init__(self, img_file, img_size=640, stride=32):
+        self.img_file = img_file
+        self.img_size = img_size
+        self.stride = stride
+        self.files = [img_file]
+        self.nf = 1
+        self.video_flag = [False]
+        self.mode = 'image'
+        self.cap = None
+
+    def __iter__(self):
+        self.count = 0
+        return self
+
+    def __next__(self):
+        # Decode image data as a numpy array
+        image = np.frombuffer(self.img_file, np.uint8)
+        # Decode image as a color image
+        img0 = cv2.imdecode(image, cv2.IMREAD_COLOR)
+
+        # Padded resize
+        img = letterbox(img0, self.img_size, stride=self.stride)[0]
+
+        # Convert
+        img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x16x16
+        img = np.ascontiguousarray(img)
+
+        return img, img0
+
+    def __len__(self):
+        return self.nf  # number of files
+
+
+
+def strw_detect(weights=['yolov7.pt'], source='inference/images', image= 0, img_size=640, conf_thres=0.25, iou_thres=0.45, device='', view_img=False, save_txt=False, save_conf=False, nosave=False, classes=None, agnostic_nms=False, augment=False, update=False, project='runs/detect', name='exp', exist_ok=False, no_trace=False):
+    
     print('****************Running strw_detect \n')
     save_img = not nosave and not source.endswith('.txt')  # save inference images
 
@@ -45,12 +84,11 @@ def strw_detect(weights=['yolov7.pt'], source='inference/images', img_size=640, 
         modelc.load_state_dict(torch.load('weights/resnet101.pt', map_location=device)['model']).to(device).eval()
 
     # Set Dataloader
-    vid_path, vid_writer = None, None
-    dataset = LoadImages(source, img_size=img_size, stride=stride)
+    dataset = LoadSingleImage(image,img_size=img_size, stride=stride)
 
     # Get names and colors
     names = model.module.names if hasattr(model, 'module') else model.names
-    colors = [[random.randint(0, 255) for _ in range(3)] for _ in names]
+    colors = [[np.random.randint(0, 255) for _ in range(3)] for _ in names]
 
     # Run inference
     if device.type != 'cpu':
@@ -59,9 +97,11 @@ def strw_detect(weights=['yolov7.pt'], source='inference/images', img_size=640, 
     old_img_b = 1
 
     t0 = time.time()
-    startTime = 0 #DAST: TO SHOW THE FPS OF THE VIDEO
+    # startTime = 0 #DAST: TO SHOW THE FPS OF THE VIDEO
 
-    for path, img, im0s, vid_cap in dataset:
+
+    # img, im0s = dataset[0]
+    for img, im0s in dataset:
         img = torch.from_numpy(img).to(device)
         img = img.half() if half else img.float()  # uint8 to fp16/32
         img /= 255.0  # 0 - 255 to 0.0 - 1.0
@@ -91,77 +131,133 @@ def strw_detect(weights=['yolov7.pt'], source='inference/images', img_size=640, 
             pred = apply_classifier(pred, modelc, img, im0s)
 
         # Process detections
-        for i, det in enumerate(pred):  # detections per image
-            p, s, im0 = path[i], '%g: ' % i, im0s[i].copy()
-            p = Path(p)  # to Path
-            save_path = str(save_dir / p.name)  # img.jpg
-
         # Process detections
         for i, det in enumerate(pred):  # detections per image
 
-            p, s, im0, frame = path, '', im0s, getattr(dataset, 'frame', 0)
-
-            p = Path(p)  # to Path
-            save_path = str(save_dir / p.name)  # img.jpg
-            txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # img.txt
-            gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
             if len(det):
                 # Rescale boxes from img_size to im0 size
-                det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
+                det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0s.shape).round()
 
                 # Print results
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
-                    s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
+                    print(f"{n} {names[int(c)]}{'s' * (n > 1)}, ", end='')
 
-                 # Write results
+                # Write results
                 for *xyxy, conf, cls in reversed(det):
-                    if save_txt:  # Write to file
-                        xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
-                        line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
-                        with open(txt_path + '.txt', 'a') as f:
-                            f.write(('%g ' * len(line)).rstrip() % line + '\n')
+                    # label format
+                    label = f'{names[int(cls)]} {conf:.2f}'
+                    plot_one_box(xyxy, im0s, label=label, color=colors[int(cls)], line_thickness=4)
+                return im0s
+        return 0
 
-                    if save_img or view_img:  # Add bbox to image
-                        label = f'{names[int(cls)]} {conf:.2f}'
-                        plot_one_box(xyxy, im0, label=label, color=colors[int(cls)], line_thickness=4)
 
-        # Print time (inference + NMS)
-            print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
 
-        # Stream results
-        if dataset.mode != 'image': #DAST HERE THE CODE TO PRINT THE FPS IN THE VIDEO
-            currentTime = time.time()
-            fps = 1/(currentTime - startTime)
-            startTime = currentTime
-            cv2.putText(im0, "FPS: " + str(int(fps)), (20,70), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,0), 2)
 
-        if view_img:
-            cv2.imshow(str(p), im0)
-            cv2.waitKey(1)  # 1 milliseconds
 
-        # Save results (image with detections)
-        if save_img:
-            if dataset.mode == 'image':
-                cv2.imwrite(save_path, im0)
-                #print(f" The image with the result is saved in: {save_path}") #DAST: idk why but ill coment this
-            else:  # 'video' or 'stream'
-                if vid_path != save_path:  # new video
-                    vid_path = save_path
-                    if isinstance(vid_writer, cv2.VideoWriter):
-                        vid_writer.release()  # release previous video writer
-                    if vid_cap:  # video
-                        fps = vid_cap.get(cv2.CAP_PROP_FPS)
-                        w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                        h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                        codec = cv2.VideoWriter_fourcc(*'mp4v')  # 'x264' doesn't work
-                        vid_writer = cv2.VideoWriter(save_path, codec, fps, (w, h))
-                vid_writer.write(im0)
+    # for img, im0s in dataset:
 
-    if save_txt or save_img:
-        print(f" The output with the result is saved in: {save_path}")
-        s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
-        #print(f"Results saved to {save_dir}{s}")
+    #     img = torch.from_numpy(img).to(device)
+    #     img = img.half() if half else img.float()  # uint8 to fp16/32
+    #     img /= 255.0  # 0 - 255 to 0.0 - 1.0
+    #     if img.ndimension() == 3:
+    #         img = img.unsqueeze(0)
+
+    #     # Warmup
+    #     if device.type != 'cpu' and (old_img_b != img.shape[0] or old_img_h != img.shape[2] or old_img_w != img.shape[3]):
+    #         old_img_b = img.shape[0]
+    #         old_img_h = img.shape[2]
+    #         old_img_w = img.shape[3]
+    #         for i in range(3):
+    #             model(img, augment=augment)[0]
+
+    #     # Inference
+    #     t1 = time_synchronized()
+    #     with torch.no_grad():   # Calculating gradients would cause a GPU memory leak
+    #         pred = model(img, augment=augment)[0]
+    #     t2 = time_synchronized()
+
+    #     # Apply NMS
+    #     pred = non_max_suppression(pred, conf_thres, iou_thres, classes=classes, agnostic=agnostic_nms)
+    #     t3 = time_synchronized()
+
+    #     # Apply Classifier
+    #     if classify:
+    #         pred = apply_classifier(pred, modelc, img, im0s)
+
+    #     # Process detections
+    #     for i, det in enumerate(pred):  # detections per image
+    #         p, s, im0 = path[i], '%g: ' % i, im0s[i].copy()
+    #         p = Path(p)  # to Path
+    #         save_path = str(save_dir / p.name)  # img.jpg
+
+    #     # Process detections
+    #     for i, det in enumerate(pred):  # detections per image
+
+    #         p, s, im0, frame = path, '', im0s, getattr(dataset, 'frame', 0)
+
+    #         p = Path(p)  # to Path
+    #         save_path = str(save_dir / p.name)  # img.jpg
+    #         txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # img.txt
+    #         gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
+    #         if len(det):
+    #             # Rescale boxes from img_size to im0 size
+    #             det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
+
+    #             # Print results
+    #             for c in det[:, -1].unique():
+    #                 n = (det[:, -1] == c).sum()  # detections per class
+    #                 s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
+
+    #              # Write results
+    #             for *xyxy, conf, cls in reversed(det):
+    #                 if save_txt:  # Write to file
+    #                     xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
+    #                     line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
+    #                     with open(txt_path + '.txt', 'a') as f:
+    #                         f.write(('%g ' * len(line)).rstrip() % line + '\n')
+
+    #                 if save_img or view_img:  # Add bbox to image
+    #                     label = f'{names[int(cls)]} {conf:.2f}'
+    #                     plot_one_box(xyxy, im0, label=label, color=colors[int(cls)], line_thickness=4)
+
+    #     # Print time (inference + NMS)
+    #         print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
+
+    #     # Stream results
+    #     if dataset.mode != 'image': #DAST HERE THE CODE TO PRINT THE FPS IN THE VIDEO
+    #         currentTime = time.time()
+    #         fps = 1/(currentTime - startTime)
+    #         startTime = currentTime
+    #         cv2.putText(im0, "FPS: " + str(int(fps)), (20,70), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,0), 2)
+
+    #     if view_img:
+    #         cv2.imshow(str(p), im0)
+    #         cv2.waitKey(1)  # 1 milliseconds
+
+    #     # Save results (image with detections)
+    #     if save_img:
+    #         if dataset.mode == 'image':
+    #             cv2.imwrite(save_path, im0)
+    #             #print(f" The image with the result is saved in: {save_path}") #DAST: idk why but ill coment this
+    #         else:  # 'video' or 'stream'
+    #             if vid_path != save_path:  # new video
+    #                 vid_path = save_path
+    #                 if isinstance(vid_writer, cv2.VideoWriter):
+    #                     vid_writer.release()  # release previous video writer
+    #                 if vid_cap:  # video
+    #                     fps = vid_cap.get(cv2.CAP_PROP_FPS)
+    #                     w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    #                     h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    #                     codec = cv2.VideoWriter_fourcc(*'mp4v')  # 'x264' doesn't work
+    #                     vid_writer = cv2.VideoWriter(save_path, codec, fps, (w, h))
+    #             vid_writer.write(im0)
+
+
+    # if save_txt or save_img:
+    #     print(f" The output with the result is saved in: {save_path}")
+    #     s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
+    #     #print(f"Results saved to {save_dir}{s}")
 
     print(f'Done. ({time.time() - t0:.3f}s)')
     print('*******************************Finish strw_detect')
