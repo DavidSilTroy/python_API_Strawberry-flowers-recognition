@@ -1,6 +1,4 @@
-import argparse
 import time
-from pathlib import Path
 
 import cv2
 import torch
@@ -8,9 +6,8 @@ import torch.backends.cudnn as cudnn
 import numpy as np
 
 from models.experimental import attempt_load
-from utils.datasets import LoadStreams, LoadImages, letterbox
-from utils.general import check_img_size, check_requirements, check_imshow, non_max_suppression, apply_classifier, \
-    scale_coords, xyxy2xywh, strip_optimizer, set_logging, increment_path
+from utils.datasets import letterbox
+from utils.general import check_img_size, non_max_suppression, apply_classifier, scale_coords, set_logging
 from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
 
@@ -46,6 +43,13 @@ class LoadSingleImage:
 
 
 class StrwbDetection:
+    instance = None
+
+    def __new__(cls):
+        if cls.instance is None:
+            cls.instance = super().__new__(cls)
+        return cls.instance
+
     def __init__(self) -> None:
         self.img_size=640
         self.conf_thres=0.25
@@ -131,11 +135,12 @@ class StrwbDetection:
                 if len(det):
                     # Rescale boxes from img_size to im0 size
                     det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0s.shape).round()
+                    result = ""
 
                     # Print results
                     for c in det[:, -1].unique():
                         n = (det[:, -1] == c).sum()  # detections per class
-                        result = f"{n} {self.names[int(c)]}{'s' * (n > 1)}, \n"
+                        result = result + f"{n} {self.names[int(c)]}{'s' * (n > 1)},"
                         print(result)
 
                     # Write results
@@ -143,7 +148,8 @@ class StrwbDetection:
                         # label format
                         label = f'{self.names[int(cls)]} {conf:.2f}'
                         plot_one_box(xyxy, im0s, label=label, color=self.colors[int(cls)], line_thickness=4)
-                    return im0s, result
+                    _, img_encoded = cv2.imencode('.jpg', im0s) # Encode image in JPG format
+                    return img_encoded, result
             return 0,""
     
     

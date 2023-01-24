@@ -1,15 +1,11 @@
 import base64
 from flask import Flask, request, Response, send_file, jsonify
-from PIL import Image
-import jsonpickle
-import numpy as np
-import cv2
 import io
 import strw_detect
 
 
-app = Flask("StrawberryFlowersAPI")
 y7_stw = strw_detect.StrwbDetection()
+app = Flask("StrawberryFlowersAPI")
 
 @app.route('/')
 def index():
@@ -20,62 +16,69 @@ def apindex():
     return "Hello world from API for strwberry detection"
 
 
-# route http posts to this method
-@app.route('/api/test', methods=['POST'])
-def test():
-    print('Checking picture')
+@app.route('/api/image-to_base64', methods=['POST'])
+def get_image_to_base64():
     if request.files['image']:
         # Get the image data from the POST request
         image_data = request.files['image'].read()
-        # Decode image data as a numpy array
-        image = np.frombuffer(image_data, np.uint8)
-        # Decode image as a color image
-        image = cv2.imdecode(image, cv2.IMREAD_COLOR)
-        # Process the image (e.g. resize, crop, etc.)
-        processed_image = cv2.resize(image, (800, 600))
-        # Encode processed image to jpeg format
-        ret, buffer = cv2.imencode('.jpg', processed_image)
-        # Create a response with the processed image
-        response = app.make_response(buffer.tobytes())
-        response.headers.set('Content-Type', 'image/jpeg')
+        # Encode image data to base64
+        base64_image = base64.b64encode(image_data)
+        # Create json response with base64 image
+        response = jsonify({"image": base64_image.decode()})
+        response.headers.set('Content-Type', 'application/json')
         return response
     else:
         return "nothing"
 
-
 @app.route('/api/image-strawberry', methods=['POST'])
 def get_image_from_object_detection():
-    if not y7_stw:
-        y7_stw = strw_detect.StrwbDetection()
-    
-    if request.files['image']:
+    image = 0
+    if request.is_json: 
+        # Get the image data from the request body
+        image_data = request.get_json()['image']
+        # Decode base64 image to bytes
+        image_bytes = base64.b64decode(image_data)
+        image = image_bytes
+    elif request.files['image']:
         # Get the image data from the POST request
         image_data = request.files['image'].read()
+        image = image_data
+    else:
+        return "nothing"
+    
+    if isinstance(image, bytes):
         #object detection
-        img_detected, result = y7_stw.detect_strw_flowers(image_data)
-        # Encode image in JPEG format
-        _, img_encoded = cv2.imencode('.jpg', img_detected)
+        img_detected, result = y7_stw.detect_strw_flowers(image)
         # Convert the image to bytes
-        img_bytes = img_encoded.tobytes()
+        img_bytes = img_detected.tobytes()
         # Return the image as response
         return send_file(io.BytesIO(img_bytes), mimetype='image/jpeg')
     else:
-        return "nothing"
+        return "problem detecting objects.."
+
+
 
 @app.route('/api/data-strawberry', methods=['POST'])
 def get_data_from_object_detection():
-    if not y7_stw:
-        y7_stw = strw_detect.StrwbDetection()
-    
-    if request.files['image']:
+    image = 0
+    if request.is_json: 
+        # Get the image data from the request body
+        image_data = request.get_json()['image']
+        # Decode base64 image to bytes
+        image_bytes = base64.b64decode(image_data)
+        image = image_bytes
+    elif request.files['image']:
         # Get the image data from the POST request
         image_data = request.files['image'].read()
+        image = image_data 
+    else:
+        return "nothing"
+    
+    if isinstance(image, bytes):
         #object detection
-        img_detected, result = y7_stw.detect_strw_flowers(image_data)
-        # Encode image in JPEG format
-        _, img_encoded = cv2.imencode('.jpg', img_detected)
+        img_detected, result = y7_stw.detect_strw_flowers(image)
         # Convert the image to bytes
-        img_bytes = img_encoded.tobytes()
+        img_bytes = img_detected.tobytes()
         # Convert the image bytes to a base64 encoded string
         img_base64 = base64.b64encode(img_bytes).decode()
         # Create a dictionary to hold the image and result
@@ -86,7 +89,7 @@ def get_data_from_object_detection():
         # Return the response as JSON
         return jsonify(response)
     else:
-        return "nothing"
+        return "problem detecting objects.."
 
 
 
