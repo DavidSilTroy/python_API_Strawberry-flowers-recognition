@@ -16,6 +16,8 @@ train_aux.py
 test.py
 export.py
 hubconf.py
+detect.py
+requirements_gpu.txt
 LICENCE.md
 
 # Byte-compiled / optimized / DLL files
