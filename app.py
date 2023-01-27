@@ -10,6 +10,7 @@ import werkzeug
 from flask_cors import CORS 
 
 #Initializing the YOLOv7 detectiong
+# y7_model = obj_detection.Initialization(weights='yourModel.pt')
 y7_model = obj_detection.Initialization()
 #initializing Flask
 app = Flask("Object Recognition API with YOLOv7")

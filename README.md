@@ -11,7 +11,11 @@ git clone https://github.com/DavidSilTroy/python_API_Strawberry-flowers-recognit
 ```
 pip install -r ./requirements.txt
 ```
-### 3. Now run the main.py or app.py, both works:
+### 3. IMPORTANT! in the folder of the API you should paste you model.pt, this api now is using 'rtrain-2.pt' by default. To use you model you can modify the app.py:
+```
+y7_model = obj_detection.Initialization(weights='yourModel.pt')
+```
+### 4. Now run the main.py or app.py, both works:
 ```
 python ./main.py
 ```
@@ -20,7 +24,7 @@ You should be able to see something like this:
 <img src="./assets/app-runin-console.jpg" alt="Terminal example" width="80%" height="auto">
 </p>
 
-### 4. For sending the pictures you can do it with postman in file or in base64 with the body as json:
+### 5. For sending the pictures you can do it with postman in file or in base64 with the body as json:
 
 <ul>
     <li>
