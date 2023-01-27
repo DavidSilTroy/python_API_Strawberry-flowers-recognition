@@ -1,24 +1,32 @@
-import base64
 from flask import Flask, request, Response, send_file, jsonify
 import io
+#For encoding and decoding
+import base64
+#customized python script from detect() in YOLOv7
 import strw_detect
+#to handle request errors
 import werkzeug
-from flask_cors import CORS
+#Cross-Origin Resource Sharing
+from flask_cors import CORS 
 
-
+#Initializing the YOLOv7 detectiong
 y7_stw = strw_detect.StrwbDetection()
-app = Flask("StrawberryFlowersAPI")
+#initializing Flask
+app = Flask("Object Recognition API with YOLOv7")
+#Cross-Origin Resource Sharing for the app
 CORS(app)
 
+#default index
 @app.route('/')
 def index():
     return "Try with going to /api"
 
+#API index
 @app.route('/api')
 def apindex():
     return "Hello world from API for strwberry detection"
 
-
+#transfrom image to base64
 @app.route('/api/image-to_base64', methods=['POST'])
 def get_image_to_base64():
     if request.files['image']:
@@ -33,6 +41,7 @@ def get_image_to_base64():
     else:
         return "nothing"
 
+#get image in binary or in base64 format to send back an image
 @app.route('/api/image-strawberry', methods=['POST'])
 def get_image_from_object_detection():
     image = 0
@@ -67,6 +76,7 @@ def get_image_from_object_detection():
 
 
 
+#get image in binary or in base64 format to send back a json response
 @app.route('/api/data-strawberry', methods=['POST'])
 def get_data_from_object_detection():
     image = 0
@@ -118,13 +128,12 @@ def get_data_from_object_detection():
         return jsonify(response)
         # return "problem detecting objects.."
 
-
+#error handler for bad requests
 @app.errorhandler(werkzeug.exceptions.BadRequest)
 def handle_bad_request(e):
-    print(f'bad request! {e} \n\n\n', 400)
-    return f'bad request! {e} \n\n\n', 400
+    print(f'bad request! \n {e} \n\n', 400)
+    return f'bad request! \n {e} \n\n', 400
 
-
-
+#run the app once the script is run
 if __name__ == '__main__':
     app.run()
