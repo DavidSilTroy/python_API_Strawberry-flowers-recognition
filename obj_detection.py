@@ -40,7 +40,7 @@ class LoadSingleImage:
     def __len__(self):
         return self.nf  # number of files
 
-class StrwbDetection:
+class Initialization:
     instance = None
 
     def __new__(cls):
@@ -48,16 +48,43 @@ class StrwbDetection:
             cls.instance = super().__new__(cls)
         return cls.instance
 
-    def __init__(self) -> None:
-        self.img_size=640
-        self.conf_thres=0.25
-        self.iou_thres=0.45
-        self.classes=None
-        self.agnostic_nms=False
-        self.augment=False
-        self.no_trace=False
-        self.weights=['rtrain-2.pt']
+    def __init__(
+        self, 
+        weights = 'rtrain-2.pt', 
+        img_size = 640, 
+        conf_thres = 0.25,
+        iou_thres = 0.45,
+        classes = None,
+        agnostic_nms = False,
+        augment = False,
+        no_trace = False
+        ):
+        self.configure(img_size=img_size, conf_thres=conf_thres, iou_thres=iou_thres, classes=classes, agnostic_nms=agnostic_nms, augment=augment, no_trace=no_trace, weights=weights)
 
+        
+
+    def configure(
+        self, 
+        weights = 'rtrain-2.pt', 
+        img_size = 640, 
+        conf_thres = 0.25,
+        iou_thres = 0.45,
+        classes = None,
+        agnostic_nms = False,
+        augment = False,
+        no_trace = False
+        ):
+        self.img_size=img_size
+        self.conf_thres=conf_thres
+        self.iou_thres=iou_thres
+        self.classes=classes
+        self.agnostic_nms=agnostic_nms
+        self.augment=augment
+        self.no_trace=no_trace
+        self.weights=[weights]
+        self.__setConfiguration()
+    
+    def __setConfiguration(self):
         # Initialize
         set_logging()
         self.device = select_device('')
@@ -67,6 +94,7 @@ class StrwbDetection:
         self.model = attempt_load(self.weights, map_location=self.device)  # load FP32 model
         
         self.stride = int(self.model.stride.max())  # model stride
+
         self.img_size = check_img_size(self.img_size, s=self.stride)  # check img_size
 
         if not self.no_trace:
@@ -92,8 +120,9 @@ class StrwbDetection:
         self.old_img_w = self.img_size
         self.old_img_h = self.img_size
         self.old_img_b = 1
-
-    def detect_strw_flowers(self, image):
+    
+    #TODO: Improve the return.
+    def detection(self, image):
         self.colors = [[np.random.randint(0, 255) for _ in range(3)] for _ in self.names]
         # Set Dataloader
         dataset = LoadSingleImage(image,img_size=self.img_size, stride=self.stride)

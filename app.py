@@ -3,14 +3,14 @@ import io
 #For encoding and decoding
 import base64
 #customized python script from detect() in YOLOv7
-import strw_detect
+import obj_detection
 #to handle request errors
 import werkzeug
 #Cross-Origin Resource Sharing
 from flask_cors import CORS 
 
 #Initializing the YOLOv7 detectiong
-y7_stw = strw_detect.StrwbDetection()
+y7_model = obj_detection.Initialization()
 #initializing Flask
 app = Flask("Object Recognition API with YOLOv7")
 #Cross-Origin Resource Sharing for the app
@@ -60,7 +60,7 @@ def get_image_from_object_detection():
     
     if isinstance(image, bytes):
         #object detection
-        img_detected, result = y7_stw.detect_strw_flowers(image)
+        img_detected, result = y7_model.detection(image)
         # Convert the image to bytes
         img_bytes = img_detected.tobytes()
         # Return the image as response
@@ -94,7 +94,7 @@ def get_data_from_object_detection():
     
     if isinstance(image, bytes):
         #object detection
-        img_detected, result = y7_stw.detect_strw_flowers(image)
+        img_detected, result = y7_model.detection(image)
         try:
             # Convert the image to bytes
             img_bytes = img_detected.tobytes()
