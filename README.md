@@ -1,4 +1,4 @@
-# API in Flask using YOLOv7
+# Object Detection API in Flask using YOLOv7
 
 ## This API if for a project to count strawberry flowers. For that we use [YOLOv7](https://github.com/WongKinYiu/yolov7)
 
