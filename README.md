@@ -83,7 +83,7 @@ fetchRes = fetch('https:strawberrydev6.loca.lt/api/data-strawberry', {
 //To see the result
 fetchRes.then(res =>
     res.json()).then(d => {
-    console.log(d)
+        console.log(d)
 }) 
 ```
 
