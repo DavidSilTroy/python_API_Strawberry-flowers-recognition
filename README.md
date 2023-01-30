@@ -63,5 +63,29 @@ You should be able to see something like this:
 
 And now you can also use your app in the internet with [localtunnel](https://github.com/localtunnel/localtunnel) ;)
 
-Thank you!
+And extra, this is one way to use JavaScript to request the API:
+```javascript
+let base64String = "Here your base64 string from the image"
+
+fetchRes = fetch('https:strawberrydev6.loca.lt/api/data-strawberry', {
+    method: 'POST',
+    headers: {
+        Accept: '*/*',
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+        "image": base64String
+    }),
+    //Cross-Origin Resource Sharing (CORS) 
+    mode: "cors", 
+});
+
+//To see the result
+fetchRes.then(res =>
+    res.json()).then(d => {
+        console.log(d)
+}) 
+```
+
+Thank you!  </br>
 [www.davidsiltroy.com](https://davidsiltroy.com/)
